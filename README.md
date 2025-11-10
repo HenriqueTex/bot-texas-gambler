@@ -65,6 +65,8 @@ node ace bot:start
 
 Ele conecta usando a sessão da sua conta pessoal e fica escutando mensagens/edições do grupo de origem para replicá-las no destino.
 
+> Em ambientes onde você precisa manter um serviço web ativo (por exemplo, provedores gratuitos que exigem uma porta aberta), basta subir o servidor HTTP padrão (`npm start`, `node ace serve --hmr`, etc.). Durante o boot do servidor o replicador é inicializado automaticamente (desde que todas as variáveis estejam configuradas), então você atende ao requisito do provedor e mantém o espelhamento no mesmo processo.
+
 ---
 
 ## 🧠 Como funciona
