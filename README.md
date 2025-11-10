@@ -1,7 +1,7 @@
 # 🤖 Bot Telegram - Texas Gambler (AdonisJS)
 
-Este projeto é um bot do Telegram desenvolvido com [Telegraf](https://telegraf.js.org/) e rodando dentro de um comando personalizado no framework [AdonisJS](https://adonisjs.com/).  
-Ele recebe mensagens relacionadas a apostas, extrai os dados (unidades e odd), e calcula os resultados com base em edições de mensagens que contenham os emojis ✅ ou 🔴.
+Este projeto replica mensagens entre grupos/canais do Telegram utilizando [GramJS (MTProto)](https://github.com/gram-js/gramjs) e roda dentro de um comando personalizado no framework [AdonisJS](https://adonisjs.com/).  
+Ele recebe mensagens relacionadas a apostas, extrai os dados (unidades e odd) e calcula os resultados com base em edições de mensagens que contenham os emojis ✅ ou 🔴.
 
 ---
 
@@ -18,10 +18,40 @@ cd seu-repo
 npm install
 ```
 
-3. Configure o token do bot no arquivo `.env`:
+3. Configure as credenciais do Telegram e os IDs dos chats no arquivo `.env`:
 ```env
-BOT_TOKEN=seu_token_do_telegram_aqui
+TELEGRAM_API_ID=seu_api_id_do_my.telegram.org
+TELEGRAM_API_HASH=seu_api_hash_do_my.telegram.org
+TELEGRAM_SESSION=string_de_sessao_gerada_pelo_comando
+SOURCE_CHAT_ID=id_ou_username_do_grupo_de_origem
+TARGET_CHAT_ID=id_ou_username_do_grupo_de_destino
 ```
+> - Gere `TELEGRAM_API_ID` e `TELEGRAM_API_HASH` em [my.telegram.org](https://my.telegram.org/apps) com a sua conta.  
+> - Execute `node ace telegram:session` para autenticar com o seu número e preencher `TELEGRAM_SESSION`.  
+> - Use o `@username` do grupo/canal ou o ID numérico (ex: `-100123456`). Para descobrir, abra o chat no Telegram Desktop/Web, copie o link `https://t.me/c/<ID>` ou use bots de utilidade em chats onde você tenha permissão.  
+> - Sua conta pessoal precisa estar presente nos dois grupos/canais e possuir permissão de leitura no originador e envio no destino.
+
+### 🔑 Gerando a sessão da sua conta
+
+1. Preencha `TELEGRAM_API_ID` e `TELEGRAM_API_HASH` no `.env`.
+2. Execute:
+```bash
+node ace telegram:session
+```
+3. Informe o número com DDI, o código recebido pelo Telegram e (se houver) a senha de 2FA.
+4. Copie a string exibida no final e cole em `TELEGRAM_SESSION` no seu `.env`.
+
+> A sessão representa a autorização da sua conta pessoal. Caso troque de servidor ou revogue o login no app oficial, gere uma nova sessão.
+
+### 🔎 Descobrindo o ID dos chats sem enviar mensagens
+
+Se você não consegue enviar mensagens ou adicionar bots no grupo, use a própria sessão MTProto para listar os chats aos quais sua conta tem acesso:
+
+```bash
+node ace telegram:list-chats
+```
+
+O comando irá conectar usando `TELEGRAM_SESSION` e exibir o nome de cada chat e o `Chat ID sugerido`. Copie o ID desejado e cole em `SOURCE_CHAT_ID` ou `TARGET_CHAT_ID`.
 
 ---
 
@@ -33,12 +63,14 @@ Para iniciar o bot:
 node ace bot:start
 ```
 
-Ele ficará escutando mensagens e edições no grupo/canal configurado.
+Ele conecta usando a sessão da sua conta pessoal e fica escutando mensagens/edições do grupo de origem para replicá-las no destino.
 
 ---
 
 ## 🧠 Como funciona
 
+- O serviço conecta usando a **sua própria conta do Telegram** (MTProto) e replica novas mensagens/edições do chat definido em `SOURCE_CHAT_ID` direto para o chat `TARGET_CHAT_ID`.
+- Somente mensagens do grupo/canal configurado são replicadas, evitando loops. Garanta que a conta esteja presente e com permissão de leitura no grupo de origem e de envio no destino.
 - O bot extrai dados da mensagem usando regex:
   - Quantidade de unidades (ex: `🔜 2 unidades`)
   - Odd da aposta (ex: `@1.90`)
@@ -95,5 +127,5 @@ pm2 save
 ## 🧪 Tecnologias
 
 - [AdonisJS v6](https://adonisjs.com/)
-- [Telegraf](https://telegraf.js.org/)
+- [GramJS (Telegram MTProto)](https://github.com/gram-js/gramjs)
 - Node.js

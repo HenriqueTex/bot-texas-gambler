@@ -27,5 +27,16 @@ export default await Env.create(new URL('../', import.meta.url), {
   DB_PORT: Env.schema.number(),
   DB_USER: Env.schema.string(),
   DB_PASSWORD: Env.schema.string.optional(),
-  DB_DATABASE: Env.schema.string()
+  DB_DATABASE: Env.schema.string(),
+
+  /*
+  |----------------------------------------------------------
+  | Telegram forwarding configuration
+  |----------------------------------------------------------
+  */
+  SOURCE_CHAT_ID: Env.schema.string(),
+  TARGET_CHAT_ID: Env.schema.string(),
+  TELEGRAM_API_ID: Env.schema.number(),
+  TELEGRAM_API_HASH: Env.schema.string(),
+  TELEGRAM_SESSION: Env.schema.string.optional(),
 })

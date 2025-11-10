@@ -56,9 +56,11 @@
     "@adonisjs/cors": "^2.2.1",
     "@adonisjs/lucid": "^21.6.0",
     "@vinejs/vine": "^3.0.0",
+    "big-integer": "^1.6.51",
     "luxon": "^3.6.1",
     "pg": "^8.15.1",
-    "reflect-metadata": "^0.2.2"
+    "reflect-metadata": "^0.2.2",
+    "telegram": "^2.26.22"
   },
   "hotHook": {
     "boundaries": [
