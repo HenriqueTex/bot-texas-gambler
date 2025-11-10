@@ -19,9 +19,7 @@ const missingVariables = requiredVariables.filter((variable) => {
   }
 })
 
-const shouldRun =
-  env.get('NODE_ENV') !== 'test' &&
-  missingVariables.length === 0
+const shouldRun = env.get('NODE_ENV') !== 'test' && missingVariables.length === 0
 
 if (!shouldRun) {
   if (missingVariables.length) {
@@ -31,9 +29,7 @@ if (!shouldRun) {
   }
 } else {
   const forwarder = new TelegramForwarderService()
-  forwarder
-    .start()
-    .catch((error) => {
-      logger.error({ err: error }, 'Falha ao iniciar replicação automática do Telegram')
-    })
+  forwarder.start().catch((error) => {
+    logger.error({ err: error }, 'Falha ao iniciar replicação automática do Telegram')
+  })
 }
