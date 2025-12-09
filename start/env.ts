@@ -39,4 +39,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   TELEGRAM_API_ID: Env.schema.number(),
   TELEGRAM_API_HASH: Env.schema.string(),
   TELEGRAM_SESSION: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | External APIs
+  |----------------------------------------------------------
+  */
+  THESPORTSDB_API_KEY: Env.schema.string.optional(),
 })
