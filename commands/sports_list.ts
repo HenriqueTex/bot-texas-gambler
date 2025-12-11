@@ -33,7 +33,7 @@ export default class SportsList extends BaseCommand {
       const sports = body.sports ?? []
 
       if (!sports.length) {
-        this.logger.warn('Nenhum esporte retornado.')
+        this.logger.warning('Nenhum esporte retornado.')
         return
       }
 

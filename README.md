@@ -31,6 +31,35 @@ TARGET_CHAT_ID=id_ou_username_do_grupo_de_destino
 > - Use o `@username` do grupo/canal ou o ID numérico (ex: `-100123456`). Para descobrir, abra o chat no Telegram Desktop/Web, copie o link `https://t.me/c/<ID>` ou use bots de utilidade em chats onde você tenha permissão.  
 > - Sua conta pessoal precisa estar presente nos dois grupos/canais e possuir permissão de leitura no originador e envio no destino.
 
+### ✏️ Integração com Google Sheets
+
+Adicione ao `.env`:
+
+```env
+GOOGLE_SHEETS_CLIENT_EMAIL=service-account@project.iam.gserviceaccount.com
+GOOGLE_SHEETS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
+GOOGLE_SHEETS_SPREADSHEET_ID=1abcDEF123
+```
+
+- Compartilhe a planilha com o e-mail do serviço (`GOOGLE_SHEETS_CLIENT_EMAIL`) com permissão de edição.  
+- O `PRIVATE_KEY` deve manter as quebras de linha escapadas com `\\n`.
+- Dependência usada: [`googleapis`](https://www.npmjs.com/package/googleapis). Instale rodando `npm install` para atualizar o `package-lock`.
+
+Exemplo de uso do service (`app/services/monitoring/google_sheets_service.ts`):
+
+```ts
+import GoogleSheetsService from '#services/monitoring/google_sheets_service'
+
+const sheets = new GoogleSheetsService()
+
+await sheets.updateRange('Planilha1!A2:C2', [
+  ['Jogo', 'Odd', 'Unidades'],
+  ['Time A x Time B', 1.9, 2],
+])
+
+await sheets.appendRows('Planilha1!A:Z', [['Time C x Time D', 2.1, 1.5]])
+```
+
 ### 🔑 Gerando a sessão da sua conta
 
 1. Preencha `TELEGRAM_API_ID` e `TELEGRAM_API_HASH` no `.env`.

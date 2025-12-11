@@ -39,6 +39,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   TELEGRAM_API_ID: Env.schema.number(),
   TELEGRAM_API_HASH: Env.schema.string(),
   TELEGRAM_SESSION: Env.schema.string.optional(),
+  TELEGRAM_BOT_TOKEN: Env.schema.string.optional(),
 
   /*
   |----------------------------------------------------------
@@ -46,4 +47,9 @@ export default await Env.create(new URL('../', import.meta.url), {
   |----------------------------------------------------------
   */
   THESPORTSDB_API_KEY: Env.schema.string.optional(),
+  GEMINI_API_KEY: Env.schema.string.optional(),
+  GEMINI_MODEL: Env.schema.string.optional(),
+  GOOGLE_SHEETS_CLIENT_EMAIL: Env.schema.string.optional(),
+  GOOGLE_SHEETS_PRIVATE_KEY: Env.schema.string.optional(),
+  GOOGLE_SHEETS_SPREADSHEET_ID: Env.schema.string.optional(),
 })

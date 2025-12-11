@@ -1,29 +1,41 @@
-import { BaseCommand, args } from '@adonisjs/core/ace'
+import env from '#start/env'
+import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-import BetImageAnalysisService from '#services/bet_image_analysis'
+import MonitoringBotService from '#services/monitoring/monitoring_bot'
 
 export default class SheetsBotStart extends BaseCommand {
   static commandName = 'sheets-bot:start'
-  static description = 'Analisa um print de aposta para extrair times e odd'
+  static description =
+    'Inicia um bot do Telegram que captura mensagens e analisa prints de apostas enviados ao bot'
 
   static options: CommandOptions = {
     startApp: false,
+    staysAlive: true,
   }
 
-  @args.string({ description: 'Caminho do print com a aposta' })
-  declare imagePath: string
-
   async run() {
-    const analyzer = new BetImageAnalysisService()
-    this.logger.info(`Analisando imagem: ${this.imagePath}`)
+    const token = env.get('TELEGRAM_BOT_TOKEN')
 
-    try {
-      const result = await analyzer.analyze(this.imagePath)
-      this.logger.success('Análise concluída')
-      console.log(JSON.stringify(result, null, 2))
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      this.logger.error(`Falha ao analisar a imagem: ${message}`)
+    if (!token) {
+      this.logger.error('Configure TELEGRAM_BOT_TOKEN no .env para iniciar o bot.')
+      return
     }
+
+    const service = new MonitoringBotService()
+    this.logger.info('Iniciando bot de monitoramento...')
+    const bot = await service.run(token)
+    this.logger.success('Bot do Telegram iniciado e aguardando mensagens.')
+    this.logger.info('Pressione CTRL+C para encerrar.')
+
+    await new Promise<void>((resolve) => {
+      process.once('SIGINT', () => {
+        bot.stop('SIGINT')
+        resolve()
+      })
+      process.once('SIGTERM', () => {
+        bot.stop('SIGTERM')
+        resolve()
+      })
+    })
   }
 }
