@@ -36,6 +36,9 @@ export default class PhotoMessageAnalysisService {
 
     try {
       return await this.analyzer.analyze(localPath, { contextText: context })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      throw new Error(`Falha ao analisar foto: ${msg}`)
     } finally {
       await fs.unlink(localPath).catch(() => {
         /* ignore cleanup errors */

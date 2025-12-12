@@ -69,40 +69,57 @@ export default class GeminiBetImageAnalysisService {
       },
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    const maxAttempts = 3
+    const baseDelayMs = 750
 
-    const raw = await response.text()
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
 
-    if (!response.ok) {
-      throw new Error(`Gemini API respondeu ${response.status}: ${raw}`)
+      const raw = await response.text()
+
+      if (!response.ok) {
+        const shouldRetry = this.isTransientStatus(response.status) && attempt < maxAttempts
+        if (shouldRetry) {
+          await this.sleep(baseDelayMs * attempt)
+          continue
+        }
+        throw new Error(`Gemini API respondeu ${response.status}: ${raw}`)
+      }
+
+      let parsed: GeminiApiResponse
+      try {
+        parsed = JSON.parse(raw) as GeminiApiResponse
+      } catch {
+        throw new Error('Não foi possível interpretar a resposta JSON do Gemini.')
+      }
+
+      if (parsed.error?.message) {
+        const shouldRetry = this.isTransientStatus(503) && attempt < maxAttempts
+        if (shouldRetry) {
+          await this.sleep(baseDelayMs * attempt)
+          continue
+        }
+        throw new Error(`Gemini API retornou erro: ${parsed.error.message}`)
+      }
+
+      const text =
+        parsed.candidates?.[0]?.content?.parts
+          ?.map((part) => part.text ?? '')
+          .join('')
+          .trim() ?? ''
+
+      if (!text) {
+        throw new Error('Gemini não retornou conteúdo textual para a análise.')
+      }
+
+      return text
     }
 
-    let parsed: GeminiApiResponse
-    try {
-      parsed = JSON.parse(raw) as GeminiApiResponse
-    } catch {
-      throw new Error('Não foi possível interpretar a resposta JSON do Gemini.')
-    }
-
-    if (parsed.error?.message) {
-      throw new Error(`Gemini API retornou erro: ${parsed.error.message}`)
-    }
-
-    const text =
-      parsed.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text ?? '')
-        .join('')
-        .trim() ?? ''
-
-    if (!text) {
-      throw new Error('Gemini não retornou conteúdo textual para a análise.')
-    }
-
-    return text
+    throw new Error('Falha ao obter resposta do Gemini após novas tentativas.')
   }
 
   private parseGeminiResult(rawText: string): BetImageAnalysisResult {
@@ -196,6 +213,7 @@ export default class GeminiBetImageAnalysisService {
       'Use "notes" para explicar brevemente de onde veio o dado (ex: slip, comprovante, etc).',
       'Analise se a imagem é realmente um print de aposta e, se não for, retorne todos os campos como null com uma nota explicativa.',
       'Retorne o campo de market como um campo textual que descreva o tipo de aposta (ex: "Moneyline","Handicap Asiatico", "Escanteios", "kills", etc).',
+      "O campo de market deve ser generico para que eu possa categorizar as apostas depois, exemplo:  'Vencedor da partida (Moneyline)' e 'Moneyline (Partida)', devem estar em uma só categoria",
     ]
 
     if (contextText && contextText.trim()) {
@@ -219,5 +237,13 @@ export default class GeminiBetImageAnalysisService {
         'Formato de imagem não suportado. Utilize png, jpg, jpeg ou webp para análise com Gemini.'
       )
     }
+  }
+
+  private isTransientStatus(status: number): boolean {
+    return [429, 500, 502, 503, 504].includes(status)
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 }
