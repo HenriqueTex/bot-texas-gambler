@@ -8,7 +8,7 @@ export default class CreateBetsTable extends BaseSchema {
       table.increments('id').notNullable()
       table.string('home_team').nullable()
       table.string('away_team').nullable()
-      table.string('market').nullable()
+      table.integer('market_id').unsigned().nullable()
       table.decimal('odd', 10, 2).nullable()
       table.string('chat_id').notNullable()
 

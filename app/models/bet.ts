@@ -1,5 +1,7 @@
 import { DateTime } from 'luxon'
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
+import Market from '#models/market'
+import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 
 export default class Bet extends BaseModel {
   @column({ isPrimary: true })
@@ -11,8 +13,8 @@ export default class Bet extends BaseModel {
   @column({ columnName: 'away_team' })
   declare awayTeam: string | null
 
-  @column()
-  declare market: string | null
+  @column({ columnName: 'market_id' })
+  declare marketId: number | null
 
   @column()
   declare odd: number | null
@@ -25,4 +27,7 @@ export default class Bet extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+
+  @belongsTo(() => Market, { foreignKey: 'marketId' })
+  declare market: BelongsTo<typeof Market>
 }

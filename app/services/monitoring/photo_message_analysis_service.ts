@@ -30,19 +30,31 @@ export default class PhotoMessageAnalysisService {
 
     const best = this.pickBestPhoto(photos)
     const fileUrl = await bot.telegram.getFileLink(best.file_id)
-    const localPath = await this.downloadToTemp(fileUrl.toString(), '.jpg')
+    let localPath: string | null = null
 
     const context = textContext && textContext.trim().length > 0 ? textContext : undefined
 
     try {
+      localPath = await this.downloadToTemp(fileUrl.toString(), '.jpg')
       return await this.analyzer.analyze(localPath, { contextText: context })
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
-      throw new Error(`Falha ao analisar foto: ${msg}`)
+      console.error(`Falha ao analisar foto: ${msg}`)
+      return {
+        homeTeam: null,
+        awayTeam: null,
+        market: null,
+        odd: null,
+        units: null,
+        sport: null,
+        notes: `Falha ao analisar foto: ${msg}`,
+      }
     } finally {
-      await fs.unlink(localPath).catch(() => {
-        /* ignore cleanup errors */
-      })
+      if (localPath) {
+        await fs.unlink(localPath).catch(() => {
+          /* ignore cleanup errors */
+        })
+      }
     }
   }
 

@@ -19,7 +19,8 @@ const missingVariables = requiredVariables.filter((variable) => {
   }
 })
 
-const shouldRun = env.get('NODE_ENV') !== 'test' && missingVariables.length === 0
+const isAceCommand = process.argv.some((arg) => arg.includes('ace'))
+const shouldRun = !isAceCommand && env.get('NODE_ENV') !== 'test' && missingVariables.length === 0
 
 if (!shouldRun) {
   if (missingVariables.length) {

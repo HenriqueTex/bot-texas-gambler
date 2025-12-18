@@ -9,7 +9,7 @@ export default class SheetsBotStart extends BaseCommand {
     'Inicia um bot do Telegram que captura mensagens e analisa prints de apostas enviados ao bot'
 
   static options: CommandOptions = {
-    startApp: false,
+    startApp: true,
     staysAlive: true,
   }
 

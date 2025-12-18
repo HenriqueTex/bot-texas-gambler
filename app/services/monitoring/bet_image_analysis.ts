@@ -6,7 +6,10 @@ export type BetImageAnalysisResult = {
   homeTeam: string | null
   awayTeam: string | null
   market: string | null
+  marketId?: number | null
   odd: number | null
+  units: number | null
+  sport: string | null
   notes?: string
 }
 
@@ -26,6 +29,8 @@ export default class BetImageAnalysisService {
       awayTeam: parsed.awayTeam,
       market: parsed.market,
       odd: parsed.odd,
+      units: parsed.odd ? 1 : null,
+      sport: null,
       notes: parsed.notes,
     }
   }

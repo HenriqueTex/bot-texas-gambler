@@ -3,6 +3,7 @@ import PhotoMessageAnalysisService from '#services/monitoring/photo_message_anal
 import MarketResolverService from '#services/monitoring/market_resolver_service'
 import MonitoringServiceFactory from '#services/monitoring/service_factory'
 import TextMessageAnalysisService from '#services/monitoring/text_message_analysis_service'
+import Bet from '#models/bet'
 import { Telegraf } from 'telegraf'
 import type { Telegraf as TelegrafInstance } from 'telegraf'
 
@@ -19,30 +20,41 @@ export default class MonitoringBotService {
       const message: any = ctx.message
       const messageText = this.extractMessageText(message)
       let imgResult: BetImageAnalysisResult | null = null
-      let units: number | null = null
+      // console.log(message)
 
-      if (messageText) {
-        const textAnalysis = await this.textAnalyzer.analyzeFromText(messageText)
-        units = textAnalysis.units
-        if (units !== null) console.log(`Unidades detectadas: ${units}`)
+      if (!message.photo && !messageText) {
+        console.log('Mensagem ignorada: sem foto ou texto.')
+        return
       }
 
-      if (message.photo) {
-        imgResult = await this.photoAnalyzer.analyze(bot, message, messageText)
-        if (imgResult) {
-          console.log('Resultado Gemini:', imgResult)
-          if (imgResult.market) {
-            const resolved = await this.marketResolver.resolveMarket(imgResult.market)
-            const resolvedName = resolved.market?.name ?? imgResult.market
-            if (resolvedName !== imgResult.market) {
-              console.log(`Mercado normalizado: ${imgResult.market} -> ${resolvedName}`)
-            }
-            imgResult = { ...imgResult, market: resolvedName }
-          }
-        }
+      imgResult = await this.photoAnalyzer.analyze(bot, message, messageText)
+
+      if (!imgResult) {
+        console.log('Nenhuma análise de imagem realizada ou reconhecida.')
+        return
+      }
+      console.log('Análise de imagem concluída.')
+      console.log('Resultado Gemini:', imgResult)
+
+      if (imgResult.market) {
+        const resolved = await this.marketResolver.resolveMarket(imgResult.market)
+
+        const resolvedName = resolved.market?.name ?? imgResult.market
+        imgResult = { ...imgResult, market: resolvedName, marketId: resolved.market?.id ?? null }
       }
 
-      // try {
+      console.log('Mercado resolvido:', imgResult)
+      if (imgResult) {
+        await Bet.create({
+          homeTeam: imgResult.homeTeam,
+          awayTeam: imgResult.awayTeam,
+          marketId: imgResult.marketId ?? null,
+          odd: imgResult.odd,
+          chatId: message.chat?.id?.toString() ?? 'unknown',
+        })
+      }
+      console.log('Aposta registrada no banco de dados.')
+
       //   const sheetsUpdater = this.serviceFactory.getSheetsUpdater({
       //     chatId: message.chat?.id ?? null,
       //   })
@@ -56,10 +68,6 @@ export default class MonitoringBotService {
       //     sentAt: message.date ? new Date(message.date * 1000) : null,
       //   })
       //   console.log('Planilha atualizada com análise da mensagem.')
-      // } catch (error) {
-      //   const msg = error instanceof Error ? error.message : String(error)
-      //   console.error(`Falha ao escrever na planilha: ${msg}`)
-      // }
     })
 
     await bot.launch()

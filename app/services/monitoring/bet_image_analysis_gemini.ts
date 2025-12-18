@@ -131,6 +131,8 @@ export default class GeminiBetImageAnalysisService {
         awayTeam: null,
         market: null,
         odd: null,
+        units: null,
+        sport: null,
         notes: `Gemini retornou uma resposta não estruturada: ${rawText.slice(0, 500)}`,
       }
     }
@@ -159,6 +161,8 @@ export default class GeminiBetImageAnalysisService {
       awayTeam: normalizeString(jsonPayload.awayTeam),
       market: normalizeString(jsonPayload.market),
       odd: normalizeOdd(jsonPayload.odd),
+      units: normalizeOdd(jsonPayload.units),
+      sport: normalizeString(jsonPayload.sport),
       notes:
         normalizeString(jsonPayload.notes) ??
         'Resultado fornecido pela API Gemini com prompt dirigido a apostas esportivas.',
@@ -205,20 +209,36 @@ export default class GeminiBetImageAnalysisService {
 
   private buildPrompt(contextText?: string): string {
     const parts = [
-      'Você é um assistente de apostas esportivas.',
-      'Dado o print da aposta, extraia as seguintes informações e retorne SOMENTE um JSON válido:',
-      '{ "homeTeam": string|null, "awayTeam": string|null, "market": string|null, "odd": number|null, "notes": string|null }',
-      'Se não encontrar algum campo, use null.',
-      'A odd deve ser numérica (ponto ou vírgula são aceitos).',
-      'Use "notes" para explicar brevemente de onde veio o dado (ex: slip, comprovante, etc).',
-      'Analise se a imagem é realmente um print de aposta e, se não for, retorne todos os campos como null com uma nota explicativa.',
-      'Retorne o campo de market como um campo textual que descreva o tipo de aposta (ex: "Moneyline","Handicap Asiatico", "Escanteios", "kills", etc).',
-      "O campo de market deve ser generico para que eu possa categorizar as apostas depois, exemplo:  'Vencedor da partida (Moneyline)' e 'Moneyline (Partida)', devem estar em uma só categoria",
+      'Act like um assistente especialista em apostas esportivas e extração estruturada a partir de imagens (prints).',
+      '',
+      'Objetivo: Dado UM print (imagem) de uma aposta, extrair os dados e devolver SOMENTE um JSON válido, exatamente com este schema (sem chaves extras):',
+      '{ "homeTeam": string|null, "awayTeam": string|null, "market": string|null, "odd": number|null, "units": number|null, "sport": string|null, "notes": string|null }',
+      '',
+      'Tarefa (siga em passos):',
+      '1) Valide o conteúdo: determine se a imagem é realmente um print/comprovante/slip de aposta (casa de apostas, odds, seleção, stake, cupom). Se NÃO for, retorne todos os campos como null e em "notes" explique o motivo.',
+      '2) Se for aposta simples, identifique homeTeam e awayTeam (times/jogadores/equipes). Se não aparecerem claramente, use null.',
+      '3) Se for aposta múltipla/accumulator, use literalmente o valor "multipla" para homeTeam, awayTeam e market.',
+      '4) Extraia "odd" como número. Aceite vírgula ou ponto na leitura, mas no JSON devolva como number (use ponto como separador decimal). Se não houver odd, null.',
+      '5) Extraia "units" como número (stake/unidades/valor apostado). Ignore moeda/símbolos; se não houver, null.',
+      '6) "sport": use APENAS o texto adicional fora do slip (ex.: legenda do print, texto da conversa). Não deduza pelo slip. Se não existir texto adicional com o esporte, retorne null.',
+      '7) "notes": descreva brevemente de onde veio cada dado (ex.: “slip”, “comprovante”, “interface do app”) e se houve ambiguidade.',
+      '',
+      'Regras para "market" (normalização obrigatória):',
+      '- Deve ser genérico e categorizável (sem números, linhas, tempo exato ou placar).',
+      '- Deve estar em inglês (ex.: use "Over kills", não "Mais de abates").',
+      '- Exemplos corretos: Over kills, Under kills, Over time, Over maps, Under maps, Handicap de kills.',
+      '- Exemplos incorretos: Over 25 kills, Over 23:59 minutes.',
+
+      '',
+      'Saída:',
+      '- Retorne apenas o JSON (sem markdown, sem texto extra).',
+      '- Use null quando não encontrar um campo; nunca “chute”.',
+      '- Autochecagem final: JSON válido, aspas duplas, sem trailing commas, sem campos extras.',
     ]
 
     if (contextText && contextText.trim()) {
       parts.push(
-        'Texto adicional enviado junto com a imagem (pode indicar se é aposta simples ou dupla):',
+        'Texto adicional enviado junto com a imagem (pode indicar se é aposta simples ou dupla e o esporte):',
         contextText.trim()
       )
     }
