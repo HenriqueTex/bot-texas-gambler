@@ -20,7 +20,7 @@ export default class MonitoringBotService {
       const message: any = ctx.message
       const messageText = this.extractMessageText(message)
       let imgResult: BetImageAnalysisResult | null = null
-      console.log(message)
+      // console.log(message)
 
       if (!message.photo && !messageText) {
         console.log('Mensagem ignorada: sem foto ou texto.')

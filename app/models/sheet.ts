@@ -25,7 +25,7 @@ export default class Sheet extends BaseModel {
   declare startRow: number
 
   @column({ columnName: 'current_row' })
-  declare currentRow: number
+  declare currentRow: number | null
 
   @column()
   declare active: boolean

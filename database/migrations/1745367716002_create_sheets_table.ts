@@ -19,7 +19,7 @@ export default class CreateSheetsTable extends BaseSchema {
       table.string('sheet_name').notNullable().defaultTo('Sheet1')
       table.jsonb('column_map').notNullable()
       table.integer('start_row').unsigned().notNullable().defaultTo(2)
-      table.integer('current_row').unsigned().notNullable().defaultTo(2)
+      table.integer('current_row').unsigned().nullable()
       table.boolean('active').notNullable().defaultTo(true)
       table.text('notes').nullable()
 
