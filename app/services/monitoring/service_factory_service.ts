@@ -14,7 +14,7 @@ export default class MonitoringServiceFactory {
 
     switch (key) {
       // Exemplo de roteamento específico por chat:
-      case '-1002000301157':
+      case '-4620692690':
         return this.getOrCreate('vip-room', SheetsUpdateService)
       default:
         return this.getOrCreate('default', SheetsUpdateService)

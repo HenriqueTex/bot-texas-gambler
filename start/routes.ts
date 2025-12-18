@@ -14,3 +14,5 @@ router.get('/', async () => {
     hello: 'world',
   }
 })
+
+router.resource('chats', () => import('#controllers/chat_controller')).apiOnly()

@@ -29,20 +29,21 @@ export default class ServiceMake extends BaseCommand {
 
     const normalizedInput = this.normalizeInput(rawPath)
     const withServicesPrefix = this.addServicesPrefix(normalizedInput)
+    const withSuffix = this.ensureServiceSuffix(withServicesPrefix)
 
-    if (!this.isServicesPath(withServicesPrefix)) {
+    if (!this.isServicesPath(withSuffix)) {
       this.logger.error('O caminho precisa ficar dentro de app/services')
       this.exitCode = 1
       return
     }
 
-    const filePath = this.resolveTargetPath(withServicesPrefix)
+    const filePath = this.resolveTargetPath(withSuffix)
     if (!filePath) {
       this.exitCode = 1
       return
     }
 
-    const className = this.buildClassName(withServicesPrefix)
+    const className = this.buildClassName(withSuffix)
     await mkdir(dirname(filePath), { recursive: true })
 
     if (await this.fileExists(filePath)) {
@@ -66,6 +67,16 @@ export default class ServiceMake extends BaseCommand {
   private addServicesPrefix(relativePath: string): string {
     const withoutServices = relativePath.replace(/^services[\\/]/, '')
     return normalize(`services/${withoutServices}`)
+  }
+
+  private ensureServiceSuffix(relativePath: string): string {
+    const parts = relativePath.split(/[\\/]/)
+    const last = parts.pop() || ''
+    const base = last.replace(/\.ts$/i, '')
+    const needsSuffix = !base.toLowerCase().endsWith('service')
+    const withSuffix = needsSuffix ? `${base}_service` : base
+    parts.push(withSuffix)
+    return normalize(parts.join('/'))
   }
 
   private isServicesPath(relativePath: string): boolean {

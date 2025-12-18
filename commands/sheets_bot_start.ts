@@ -1,7 +1,7 @@
 import env from '#start/env'
 import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-import MonitoringBotService from '#services/monitoring/monitoring_bot'
+import MonitoringBotService from '#services/monitoring/monitoring_bot_service'
 
 export default class SheetsBotStart extends BaseCommand {
   static commandName = 'sheets-bot:start'

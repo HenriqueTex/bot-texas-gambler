@@ -1,6 +1,6 @@
 import env from '#start/env'
 import logger from '@adonisjs/core/services/logger'
-import TelegramForwarderService from '#services/telegram_forwarder'
+import TelegramForwarderService from '#services/telegram_forwarder_service'
 
 const requiredVariables = [
   'TELEGRAM_API_ID',

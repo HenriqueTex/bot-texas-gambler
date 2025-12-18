@@ -1,6 +1,6 @@
 import { BaseCommand } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-import TelegramForwarderService from '#services/telegram_forwarder'
+import TelegramForwarderService from '#services/telegram_forwarder_service'
 
 export default class BotStart extends BaseCommand {
   static commandName = 'bot:start'

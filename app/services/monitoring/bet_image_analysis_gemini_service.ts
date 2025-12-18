@@ -1,5 +1,5 @@
 import env from '#start/env'
-import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis'
+import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis_service'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 

@@ -1,5 +1,5 @@
-import GeminiBetImageAnalysisService from '#services/monitoring/bet_image_analysis_gemini'
-import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis'
+import GeminiBetImageAnalysisService from '#services/monitoring/bet_image_analysis_gemini_service'
+import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis_service'
 import type { Telegraf as TelegrafInstance } from 'telegraf'
 import type { PhotoSize } from '@telegraf/types'
 import crypto from 'node:crypto'

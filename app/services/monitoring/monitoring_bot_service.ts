@@ -1,7 +1,7 @@
-import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis'
+import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis_service'
 import PhotoMessageAnalysisService from '#services/monitoring/photo_message_analysis_service'
 import MarketResolverService from '#services/monitoring/market_resolver_service'
-import MonitoringServiceFactory from '#services/monitoring/service_factory'
+import MonitoringServiceFactory from '#services/monitoring/service_factory_service'
 import TextMessageAnalysisService from '#services/monitoring/text_message_analysis_service'
 import Bet from '#models/bet'
 import { Telegraf } from 'telegraf'
@@ -20,7 +20,7 @@ export default class MonitoringBotService {
       const message: any = ctx.message
       const messageText = this.extractMessageText(message)
       let imgResult: BetImageAnalysisResult | null = null
-      // console.log(message)
+      console.log(message)
 
       if (!message.photo && !messageText) {
         console.log('Mensagem ignorada: sem foto ou texto.')
