@@ -1,7 +1,7 @@
 import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis_service'
 import PhotoMessageAnalysisService from '#services/monitoring/photo_message_analysis_service'
 import MarketResolverService from '#services/monitoring/market_resolver_service'
-import MonitoringServiceFactory from '#services/monitoring/service_factory_service'
+import SheetMapFactoryService from '#services/monitoring/sheet_map_factory_service'
 import TextMessageAnalysisService from '#services/monitoring/text_message_analysis_service'
 import Bet from '#models/bet'
 import { Telegraf } from 'telegraf'
@@ -11,7 +11,7 @@ export default class MonitoringBotService {
   private readonly photoAnalyzer = new PhotoMessageAnalysisService()
   private readonly textAnalyzer = new TextMessageAnalysisService()
   private readonly marketResolver = new MarketResolverService()
-  private readonly serviceFactory = new MonitoringServiceFactory()
+  private readonly serviceFactory = new SheetMapFactoryService()
 
   async run(token: string): Promise<TelegrafInstance> {
     const bot = new Telegraf(token)
@@ -52,22 +52,14 @@ export default class MonitoringBotService {
           odd: imgResult.odd,
           chatId: message.chat?.id?.toString() ?? 'unknown',
         })
+
+        const sheetService = this.serviceFactory.getSheetService({
+          chatId: message.chat?.id ?? null,
+        })
+        const status = await sheetService.handle(message, imgResult)
+        console.log(`Sheet service status: ${status}`)
       }
       console.log('Aposta registrada no banco de dados.')
-
-      //   const sheetsUpdater = this.serviceFactory.getSheetsUpdater({
-      //     chatId: message.chat?.id ?? null,
-      //   })
-
-      //   await sheetsUpdater.writeAnalysis({
-      //     telegramChatId: message.chat?.id ?? null,
-      //     imgResult,
-      //     units,
-      //     rawText: messageText,
-      //     messageId: message.message_id,
-      //     sentAt: message.date ? new Date(message.date * 1000) : null,
-      //   })
-      //   console.log('Planilha atualizada com análise da mensagem.')
     })
 
     await bot.launch()

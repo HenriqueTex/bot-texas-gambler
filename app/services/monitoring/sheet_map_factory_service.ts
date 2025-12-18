@@ -1,27 +1,35 @@
-import SheetsUpdateService from '#services/monitoring/sheets_update_service'
+import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis_service'
+import TexasSheetService from '#services/sheet_maps/texas_sheet_service'
 
 type ChatIdentifier = string | number | null | undefined
 
-export default class MonitoringServiceFactory {
-  private sheetsCache = new Map<string, SheetsUpdateService>()
+export type SheetMapService = {
+  handle(
+    message: unknown,
+    imgResult: BetImageAnalysisResult
+  ): Promise<'success' | 'skipped' | 'error'>
+}
+
+export default class SheetMapFactoryService {
+  private sheetsCache = new Map<string, SheetMapService>()
 
   /**
    * Retorna a service de escrita de planilha apropriada para o chat.
    * Usa exclusivamente o chatId como chave de roteamento.
    */
-  getSheetsUpdater(args: { chatId?: ChatIdentifier }): SheetsUpdateService {
+  getSheetService(args: { chatId?: ChatIdentifier }): SheetMapService {
     const key = this.normalizeIdentifier(args.chatId) ?? 'default'
 
     switch (key) {
       // Exemplo de roteamento específico por chat:
       case '-4620692690':
-        return this.getOrCreate('vip-room', SheetsUpdateService)
+        return new TexasSheetService()
       default:
-        return this.getOrCreate('default', SheetsUpdateService)
+        return this.getOrCreate('default', TexasSheetService)
     }
   }
 
-  private getOrCreate(key: string, Factory: new () => SheetsUpdateService): SheetsUpdateService {
+  private getOrCreate(key: string, Factory: new () => SheetMapService): SheetMapService {
     const existing = this.sheetsCache.get(key)
     if (existing) return existing
 
