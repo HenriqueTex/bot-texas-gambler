@@ -86,6 +86,20 @@ export default class GoogleSheetsService {
     return rawKey.replace(/\\n/g, '\n')
   }
 
+  async getRange(
+    range: string,
+    options?: { spreadsheetId?: string }
+  ): Promise<string[][]> {
+    const spreadsheetId = this.resolveSpreadsheetId(options?.spreadsheetId)
+
+    const res = await this.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+    })
+
+    return (res.data.values as string[][]) ?? []
+  }
+
   private resolveSpreadsheetId(spreadsheetId?: string): string {
     const id = spreadsheetId ?? this.defaultSpreadsheetId
     if (!id) {

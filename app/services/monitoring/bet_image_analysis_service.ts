@@ -56,6 +56,9 @@ export default class BetImageAnalysisService {
         awayTeam: null,
         market: null,
         odd: null,
+        marketId: null,
+        units: null,
+        sport: null,
         notes: 'OCR não encontrou texto na imagem.',
       }
     }
@@ -103,6 +106,9 @@ export default class BetImageAnalysisService {
       awayTeam,
       market,
       odd: oddMatch,
+      marketId: null,
+      units: null,
+      sport: null,
       notes: 'Resultado baseado em OCR local (tesseract.js). Ajuste regras conforme necessário.',
     }
   }

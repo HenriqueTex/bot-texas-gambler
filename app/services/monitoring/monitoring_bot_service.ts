@@ -3,6 +3,8 @@ import PhotoMessageAnalysisService from '#services/monitoring/photo_message_anal
 import MarketResolverService from '#services/monitoring/market_resolver_service'
 import SheetMapFactoryService from '#services/monitoring/sheet_map_factory_service'
 import TextMessageAnalysisService from '#services/monitoring/text_message_analysis_service'
+import MessageEditHandlerService from '#services/monitoring/message_edit_handler_service'
+import MessageHandlerService from '#services/monitoring/message_handler_service'
 import Bet from '#models/bet'
 import { Telegraf } from 'telegraf'
 import type { Telegraf as TelegrafInstance } from 'telegraf'
@@ -12,54 +14,24 @@ export default class MonitoringBotService {
   private readonly textAnalyzer = new TextMessageAnalysisService()
   private readonly marketResolver = new MarketResolverService()
   private readonly serviceFactory = new SheetMapFactoryService()
+  private readonly messageHandler = new MessageHandlerService()
+  private readonly messageEditHandler = new MessageEditHandlerService()
 
   async run(token: string): Promise<TelegrafInstance> {
     const bot = new Telegraf(token)
 
     bot.on('message', async (ctx) => {
-      const message: any = ctx.message
-      const messageText = this.extractMessageText(message)
-      let imgResult: BetImageAnalysisResult | null = null
-      // console.log(message)
+      await this.messageHandler.handle({
+        bot,
+        ctx,
+        message: ctx.message as any,
+      })
+    })
 
-      if (!message.photo && !messageText) {
-        console.log('Mensagem ignorada: sem foto ou texto.')
-        return
-      }
-
-      imgResult = await this.photoAnalyzer.analyze(bot, message, messageText)
-
-      if (!imgResult) {
-        console.log('Nenhuma análise de imagem realizada ou reconhecida.')
-        return
-      }
-      console.log('Análise de imagem concluída.')
-      console.log('Resultado Gemini:', imgResult)
-
-      if (imgResult.market) {
-        const resolved = await this.marketResolver.resolveMarket(imgResult.market)
-
-        const resolvedName = resolved.market?.name ?? imgResult.market
-        imgResult = { ...imgResult, market: resolvedName, marketId: resolved.market?.id ?? null }
-      }
-
-      console.log('Mercado resolvido:', imgResult)
-      if (imgResult) {
-        await Bet.create({
-          homeTeam: imgResult.homeTeam,
-          awayTeam: imgResult.awayTeam,
-          marketId: imgResult.marketId ?? null,
-          odd: imgResult.odd,
-          chatId: message.chat?.id?.toString() ?? 'unknown',
-        })
-
-        const sheetService = this.serviceFactory.getSheetService({
-          chatId: message.chat?.id ?? null,
-        })
-        const status = await sheetService.handle(message, imgResult)
-        console.log(`Sheet service status: ${status}`)
-      }
-      console.log('Aposta registrada no banco de dados.')
+    bot.on('edited_message', async (ctx) => {
+      const message: any = ctx.editedMessage
+      console.log('Mensagem editada recebida:', message)
+      await this.messageEditHandler.handle({ message })
     })
 
     await bot.launch()

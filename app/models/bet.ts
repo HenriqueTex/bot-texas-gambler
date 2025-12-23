@@ -19,8 +19,20 @@ export default class Bet extends BaseModel {
   @column()
   declare odd: number | null
 
+  @column({ columnName: 'message_id' })
+  declare messageId: string | null
+
   @column({ columnName: 'chat_id' })
   declare chatId: string
+
+  @column()
+  declare result: 'green' | 'red' | 'half green' | 'half red' | 'void' | null
+
+  @column()
+  declare units: number | null
+
+  @column({ columnName: 'sheet_row' })
+  declare sheetRow: number | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

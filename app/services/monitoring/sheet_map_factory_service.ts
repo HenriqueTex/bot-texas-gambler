@@ -1,12 +1,19 @@
 import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis_service'
+import Bet from '#models/bet'
 import TexasSheetService from '#services/sheet_maps/texas_sheet_service'
 
 type ChatIdentifier = string | number | null | undefined
 
 export type SheetMapService = {
-  handle(
+  createLine(
     message: unknown,
-    imgResult: BetImageAnalysisResult
+    imgResult: BetImageAnalysisResult,
+    bet: Bet
+  ): Promise<'success' | 'skipped' | 'error'>
+  updateLine(
+    message: unknown,
+    imgResult: BetImageAnalysisResult,
+    bet: Bet
   ): Promise<'success' | 'skipped' | 'error'>
 }
 
