@@ -183,18 +183,15 @@ export default class MonitoringBotService {
     const market = bet.market?.name ?? ''
     const odd = Number(bet.odd)
     const units = Number(bet.units)
-    const parts = [date, homeAway, market, odd ? `@${odd}` : '', units ? `${units}u` : ''].filter(
-      (value) => value && value.length > 0
-    )
+    const parts = [
+      date ? `📅 ${date}` : '',
+      homeAway ? `- ${homeAway}` : '',
+      market ? `- ${market}` : '',
+      odd ? `🎯 @${odd}` : '',
+      units ? `${units}u` : '',
+    ].filter((value) => value && value.length > 0)
 
-    return parts.join(' | ')
-  }
-
-  private formatOptionalNumber(value: number | null | undefined): string {
-    if (!Number.isFinite(value)) {
-      return ''
-    }
-    return this.formatNumber(value as number)
+    return parts.join(' ')
   }
 
   private formatTeams(home: string, away: string): string {
