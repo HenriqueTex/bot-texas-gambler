@@ -22,6 +22,10 @@ export default class MessageHandlerService {
   private readonly replyHandler = new MessageReplyHandlerService()
 
   async handle({ bot, ctx, message }: HandleArgs): Promise<void> {
+    if (this.isCommandMessage(message)) {
+      return
+    }
+
     if (message?.reply_to_message?.message_id) {
       await this.replyHandler.handle({ message })
       return
@@ -75,5 +79,12 @@ export default class MessageHandlerService {
 
   private extractMessageText(message: { text?: string; caption?: string }): string {
     return (message.text ?? message.caption ?? '').toString()
+  }
+
+  private isCommandMessage(message: { text?: string; photo?: unknown }): boolean {
+    if (!message || !message.text || message.photo) {
+      return false
+    }
+    return message.text.trim().startsWith('/')
   }
 }
