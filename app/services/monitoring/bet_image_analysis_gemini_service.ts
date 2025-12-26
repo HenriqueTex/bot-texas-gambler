@@ -218,7 +218,7 @@ export default class GeminiBetImageAnalysisService {
       '1) Valide o conteúdo: determine se a imagem é realmente um print/comprovante/slip de aposta (casa de apostas, odds, seleção, stake, cupom). Se NÃO for, retorne todos os campos como null e em "notes" explique o motivo.',
       '2) Se for aposta simples, identifique homeTeam e awayTeam (times/jogadores/equipes). Se não aparecerem claramente, use null.',
       '3) Se for aposta múltipla/accumulator, use literalmente o valor "multipla" para homeTeam, awayTeam e market.',
-      '4) Extraia "odd" como número. Aceite vírgula ou ponto na leitura, mas no JSON devolva como number (use ponto como separador decimal). Se não houver odd, null.',
+      '4) Extraia "odd" como número. Aceite vírgula ou ponto na leitura, mas no JSON devolva como number (use virgula como separador decimal). Se não houver odd, null.',
       '5) Extraia "units" como número (unidades apostado), priorize os valores na legenda. Ignore moeda/símbolos; se não houver, utilize 1.',
       '6) "sport": use APENAS o texto adicional fora do slip (ex.: legenda do print, texto da conversa). Não deduza pelo slip. Se não existir texto adicional com o esporte, retorne null.',
       '7) "notes": descreva brevemente de onde veio cada dado (ex.: “slip”, “comprovante”, “interface do app”) e se houve ambiguidade.',

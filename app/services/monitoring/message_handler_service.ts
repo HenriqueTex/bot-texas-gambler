@@ -3,8 +3,10 @@ import PhotoMessageAnalysisService from '#services/monitoring/photo_message_anal
 import MarketResolverService from '#services/monitoring/market_resolver_service'
 import SheetMapFactoryService from '#services/monitoring/sheet_map_factory_service'
 import TextMessageAnalysisService from '#services/monitoring/text_message_analysis_service'
+import MessageReplyHandlerService from '#services/monitoring/message_reply_handler_service'
 import Bet from '#models/bet'
 import type { Telegraf as TelegrafInstance } from 'telegraf'
+import { formatOdd } from '../../utils/odd_formatter.js'
 
 type HandleArgs = {
   bot: TelegrafInstance
@@ -17,8 +19,14 @@ export default class MessageHandlerService {
   private readonly textAnalyzer = new TextMessageAnalysisService()
   private readonly marketResolver = new MarketResolverService()
   private readonly sheetFactory = new SheetMapFactoryService()
+  private readonly replyHandler = new MessageReplyHandlerService()
 
   async handle({ bot, ctx, message }: HandleArgs): Promise<void> {
+    if (message?.reply_to_message?.message_id) {
+      await this.replyHandler.handle({ message })
+      return
+    }
+
     const messageText = this.extractMessageText(message)
     let imgResult: BetImageAnalysisResult | null = null
     console.log(message)
@@ -50,7 +58,7 @@ export default class MessageHandlerService {
         homeTeam: imgResult.homeTeam,
         awayTeam: imgResult.awayTeam,
         marketId: imgResult.marketId ?? null,
-        odd: imgResult.odd,
+        odd: formatOdd(imgResult.odd),
         units: imgResult.units ?? null,
         messageId: message.message_id?.toString() ?? null,
         chatId: message.chat?.id?.toString() ?? 'unknown',

@@ -2,6 +2,7 @@ import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_anal
 import Sheet from '#models/sheet'
 import Bet from '#models/bet'
 import { normalizeText } from '../../utils/text_normalizer.js'
+import { formatUnit } from '../../utils/odd_formatter.js'
 import GoogleSheetsService from '#services/monitoring/google_sheets_service'
 
 export default class TexasSheetService {
@@ -43,8 +44,8 @@ export default class TexasSheetService {
       homeAway,
       imgResult.market ?? '',
       '', // coluna F vazia
-      imgResult.units ?? '',
-      imgResult.odd ?? '',
+      this.formatUnitForSheet(imgResult.units ?? ''),
+      this.formatOddForSheet(imgResult.odd ?? ''),
     ]
 
     try {
@@ -105,8 +106,8 @@ export default class TexasSheetService {
       homeAway,
       imgResult.market ?? bet?.market?.name ?? '',
       '',
-      imgResult.units ?? bet.units ?? '',
-      imgResult.odd ?? bet.odd ?? '',
+      this.formatUnitForSheet(imgResult.units ?? bet.units ?? ''),
+      this.formatOddForSheet(imgResult.odd ?? bet.odd ?? ''),
       resultText,
     ]
 
@@ -140,6 +141,18 @@ export default class TexasSheetService {
     const month = pad(date.getMonth() + 1)
     const year = date.getFullYear()
     return `${day}/${month}/${year}`
+  }
+
+  private formatUnitForSheet(unit: number | string | null | undefined): string {
+    if (unit === null || typeof unit === 'undefined') return ''
+    const str = unit.toString()
+    return str.replace('.', ',')
+  }
+
+  private formatOddForSheet(odd: number | string | null | undefined): string {
+    if (odd === null || typeof odd === 'undefined') return ''
+    const str = odd.toString()
+    return str.replace('.', ',')
   }
 
   private escapeSheetName(name: string): string {

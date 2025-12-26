@@ -1,34 +1,33 @@
 import Bet from '#models/bet'
-import Market from '#models/market'
-import { normalizeText } from '../../utils/text_normalizer.js'
 import SheetMapFactoryService from '#services/monitoring/sheet_map_factory_service'
+import { normalizeText } from '../../utils/text_normalizer.js'
 import { formatOdd, formatUnit } from '../../utils/odd_formatter.js'
 
 type HandleArgs = {
   message: any
 }
 
-export default class MessageEditHandlerService {
+export default class MessageReplyHandlerService {
   private readonly sheetFactory = new SheetMapFactoryService()
 
   async handle({ message }: HandleArgs): Promise<'success' | 'not_found' | 'skipped' | 'error'> {
-    const messageId = message?.message_id
+    const repliedId = message?.reply_to_message?.message_id
     const chatId = message?.chat?.id
 
-    if (!messageId || !chatId) {
-      console.log('Edição ignorada: faltando message_id ou chat.id')
+    if (!repliedId || !chatId) {
+      console.log('Resposta ignorada: faltando reply_to_message ou chat.id')
       return 'skipped'
     }
 
     const normalizedChatId = chatId.toString()
 
     const bet = await Bet.query()
-      .where('message_id', messageId.toString())
+      .where('message_id', repliedId.toString())
       .where('chat_id', normalizedChatId)
       .first()
 
     if (!bet) {
-      console.log('Edição ignorada: bet não encontrada para message_id/chat_id')
+      console.log('Resposta ignorada: bet não encontrada para reply_to_message/chat_id')
       return 'not_found'
     }
 
@@ -54,7 +53,7 @@ export default class MessageEditHandlerService {
     const status = await sheetService.updateLine(message, imgResult as any, bet)
 
     console.log(
-      `Bet atualizada via edição: id=${bet.id}, units=${bet.units}, odd=${bet.odd}, result=${bet.result}, sheetStatus=${status}`
+      `Bet atualizada via resposta: id=${bet.id}, units=${bet.units}, odd=${bet.odd}, result=${bet.result}, sheetStatus=${status}`
     )
     return 'success'
   }
@@ -64,16 +63,14 @@ export default class MessageEditHandlerService {
     const unitMatch = text.match(unitPattern)
     const units = unitMatch ? this.toNumber(unitMatch[1]) : null
 
-    // Remover a porção que contém unidades para não confundir com odd
     const textWithoutUnits = unitMatch
       ? text.slice(0, unitMatch.index) + text.slice(unitMatch.index! + unitMatch[0].length)
       : text
 
-    // Odd precisa ter um prefixo claro (@, odd, odds, cota, cotação)
     const oddPattern = /(?:@|odds?\s*[:\-]?\s*|cota(?:cao)?\s*[:\-]?\s*)(\d+(?:[.,]\d+)?)/i
     const oddMatch = textWithoutUnits.match(oddPattern)
     const odd = oddMatch ? this.toNumber(oddMatch[1]) : null
-    console.log(`Extracted units: ${units}, odd: ${odd} from text.`)
+
     return { units, odd }
   }
 
