@@ -4,6 +4,7 @@ import MarketResolverService from '#services/monitoring/market_resolver_service'
 import SheetMapFactoryService from '#services/monitoring/sheet_map_factory_service'
 import TextMessageAnalysisService from '#services/monitoring/text_message_analysis_service'
 import MessageReplyHandlerService from '#services/monitoring/message_reply_handler_service'
+import MessageClassifierService from '#services/monitoring/message_classifier_service'
 import Bet from '#models/bet'
 import type { Telegraf as TelegrafInstance } from 'telegraf'
 import { formatOdd } from '../../utils/odd_formatter.js'
@@ -20,6 +21,7 @@ export default class MessageHandlerService {
   private readonly marketResolver = new MarketResolverService()
   private readonly sheetFactory = new SheetMapFactoryService()
   private readonly replyHandler = new MessageReplyHandlerService()
+  private readonly classifier = new MessageClassifierService()
 
   async handle({ bot, ctx, message }: HandleArgs): Promise<void> {
     if (this.isCommandMessage(message)) {
@@ -37,6 +39,16 @@ export default class MessageHandlerService {
 
     if (!message.photo && !messageText) {
       console.log('Mensagem ignorada: sem foto ou texto.')
+      return
+    }
+
+    const classification = this.classifier.classify(message, messageText)
+    if (!classification.isBet) {
+      console.log(
+        `Mensagem ignorada: não identificada como aposta (conf=${classification.confidence.toFixed(
+          2
+        )}, reasons=${classification.reasons.join(',')})`
+      )
       return
     }
 

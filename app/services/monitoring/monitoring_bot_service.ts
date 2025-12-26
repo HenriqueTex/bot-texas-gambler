@@ -1,5 +1,6 @@
 import MessageEditHandlerService from '#services/monitoring/message_edit_handler_service'
 import MessageHandlerService from '#services/monitoring/message_handler_service'
+import HelpCommandService from '#services/monitoring/help_command_service'
 import OpenBetsCommandService from '#services/monitoring/open_bets_command_service'
 import StatsCommandService from '#services/monitoring/stats_command_service'
 import { Telegraf } from 'telegraf'
@@ -8,6 +9,7 @@ import type { Telegraf as TelegrafInstance } from 'telegraf'
 export default class MonitoringBotService {
   private readonly messageHandler = new MessageHandlerService()
   private readonly messageEditHandler = new MessageEditHandlerService()
+  private readonly helpCommand = new HelpCommandService()
   private readonly statsCommand = new StatsCommandService()
   private readonly openBetsCommand = new OpenBetsCommandService()
 
@@ -28,6 +30,10 @@ export default class MonitoringBotService {
 
     bot.command('abertas', async (ctx) => {
       await this.openBetsCommand.handle(ctx)
+    })
+
+    bot.command('help', async (ctx) => {
+      await this.helpCommand.handle(ctx)
     })
 
     bot.on('message', async (ctx) => {
