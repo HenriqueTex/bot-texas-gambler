@@ -1,8 +1,8 @@
 import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis_service'
+import GeminiBetImageAnalysisService from '#services/monitoring/bet_image_analysis_gemini_service'
 import PhotoMessageAnalysisService from '#services/monitoring/photo_message_analysis_service'
 import MarketResolverService from '#services/monitoring/market_resolver_service'
 import SheetMapFactoryService from '#services/monitoring/sheet_map_factory_service'
-import TextMessageAnalysisService from '#services/monitoring/text_message_analysis_service'
 import MessageReplyHandlerService from '#services/monitoring/message_reply_handler_service'
 import MessageClassifierService from '#services/monitoring/message_classifier_service'
 import Bet from '#models/bet'
@@ -17,7 +17,7 @@ type HandleArgs = {
 
 export default class MessageHandlerService {
   private readonly photoAnalyzer = new PhotoMessageAnalysisService()
-  private readonly textAnalyzer = new TextMessageAnalysisService()
+  private readonly geminiAnalyzer = new GeminiBetImageAnalysisService()
   private readonly marketResolver = new MarketResolverService()
   private readonly sheetFactory = new SheetMapFactoryService()
   private readonly replyHandler = new MessageReplyHandlerService()
@@ -34,7 +34,9 @@ export default class MessageHandlerService {
     }
 
     const messageText = this.extractMessageText(message)
+
     let imgResult: BetImageAnalysisResult | null = null
+
     console.log(message)
 
     if (!message.photo && !messageText) {
@@ -43,6 +45,7 @@ export default class MessageHandlerService {
     }
 
     const classification = this.classifier.classify(message, messageText)
+
     if (!classification.isBet) {
       console.log(
         `Mensagem ignorada: não identificada como aposta (conf=${classification.confidence.toFixed(
@@ -52,7 +55,27 @@ export default class MessageHandlerService {
       return
     }
 
-    imgResult = await this.photoAnalyzer.analyze(bot, message, messageText)
+    if (message?.photo?.length) {
+      imgResult = await this.photoAnalyzer.analyze(bot, message, messageText)
+    }
+
+    if (!message?.photo?.length) {
+      try {
+        imgResult = await this.geminiAnalyzer.analyzeText(messageText)
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        console.error(`Falha ao analisar texto com Gemini: ${msg}`)
+        imgResult = {
+          homeTeam: null,
+          awayTeam: null,
+          market: null,
+          odd: null,
+          units: null,
+          sport: null,
+          notes: `Falha ao analisar texto com Gemini: ${msg}`,
+        }
+      }
+    }
 
     if (!imgResult) {
       console.log('Nenhuma análise de imagem realizada ou reconhecida.')

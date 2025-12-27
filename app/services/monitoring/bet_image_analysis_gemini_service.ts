@@ -42,26 +42,34 @@ export default class GeminiBetImageAnalysisService {
 
     const mimeType = this.getMimeType(resolvedPath)
     const base64Image = await this.readBase64(resolvedPath)
-    const prompt = this.buildPrompt(options?.contextText)
+    const prompt = this.buildPrompt(options?.contextText, { hasImage: true })
 
-    const rawText = await this.callGemini({ prompt, mimeType, base64Image })
+    const rawText = await this.callGemini(prompt, { mimeType, base64Image })
     return this.parseGeminiResult(rawText)
   }
 
-  private async callGemini(args: {
-    prompt: string
-    mimeType: string
-    base64Image: string
-  }): Promise<string> {
+  async analyzeText(contextText?: string): Promise<BetImageAnalysisResult> {
+    const prompt = this.buildPrompt(contextText, { hasImage: false })
+    const rawText = await this.callGemini(prompt)
+    return this.parseGeminiResult(rawText)
+  }
+
+  private async callGemini(
+    prompt: string,
+    image?: { mimeType: string; base64Image: string }
+  ): Promise<string> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`
+    const parts = [{ text: prompt }] as Array<{ text?: string; inlineData?: unknown }>
+
+    if (image) {
+      parts.push({ inlineData: { mimeType: image.mimeType, data: image.base64Image } })
+    }
+
     const body = {
       contents: [
         {
           role: 'user',
-          parts: [
-            { text: args.prompt },
-            { inlineData: { mimeType: args.mimeType, data: args.base64Image } },
-          ],
+          parts,
         },
       ],
       generationConfig: {
@@ -207,15 +215,26 @@ export default class GeminiBetImageAnalysisService {
     return mimeType
   }
 
-  private buildPrompt(contextText?: string): string {
+  private buildPrompt(contextText?: string, options?: { hasImage?: boolean }): string {
+    const hasImage = options?.hasImage ?? true
+    const objectiveLine = hasImage
+      ? 'Objetivo: Dado UM print (imagem) de uma aposta, extrair os dados e devolver SOMENTE um JSON válido, exatamente com este schema (sem chaves extras):'
+      : 'Objetivo: Dado UM texto de uma aposta, extrair os dados e devolver SOMENTE um JSON válido, exatamente com este schema (sem chaves extras):'
+
+    const validationLine = hasImage
+      ? '1) Valide o conteúdo: determine se a imagem é realmente um print/comprovante/slip de aposta (casa de apostas, odds, seleção, stake, cupom). Se NÃO for, retorne todos os campos como null e em "notes" explique o motivo.'
+      : '1) Valide o conteúdo: determine se o texto descreve uma aposta (odds, seleção, stake, cupom). Se NÃO for, retorne todos os campos como null e em "notes" explique o motivo.'
+
     const parts = [
-      'Act like um assistente especialista em apostas esportivas e extração estruturada a partir de imagens (prints).',
+      hasImage
+        ? 'Act like um assistente especialista em apostas esportivas e extração estruturada a partir de imagens (prints).'
+        : 'Act like um assistente especialista em apostas esportivas e extração estruturada a partir de texto.',
       '',
-      'Objetivo: Dado UM print (imagem) de uma aposta, extrair os dados e devolver SOMENTE um JSON válido, exatamente com este schema (sem chaves extras):',
+      objectiveLine,
       '{ "homeTeam": string|null, "awayTeam": string|null, "market": string|null, "odd": number|null, "units": number|null, "sport": string|null, "notes": string|null }',
       '',
       'Tarefa (siga em passos):',
-      '1) Valide o conteúdo: determine se a imagem é realmente um print/comprovante/slip de aposta (casa de apostas, odds, seleção, stake, cupom). Se NÃO for, retorne todos os campos como null e em "notes" explique o motivo.',
+      validationLine,
       '2) Se for aposta simples, identifique homeTeam e awayTeam (times/jogadores/equipes). Se não aparecerem claramente, use null.',
       '3) Se for aposta múltipla/accumulator, use literalmente o valor "multipla" para homeTeam, awayTeam e market.',
       '4) Extraia "odd" como número. Aceite vírgula ou ponto na leitura, mas no JSON devolva como number (use virgula como separador decimal). Se não houver odd, null.',
@@ -240,6 +259,12 @@ export default class GeminiBetImageAnalysisService {
       parts.push(
         'Texto adicional enviado junto com a imagem (pode indicar se é aposta simples ou dupla e o esporte):',
         contextText.trim()
+      )
+    }
+
+    if (!hasImage) {
+      parts.push(
+        'Não há imagem disponível. Use apenas o texto acima para extrair os campos; se faltar informação, retorne null.'
       )
     }
 
