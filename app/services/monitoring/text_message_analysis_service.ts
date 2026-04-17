@@ -1,3 +1,5 @@
+import { normalizeBetText } from '../../utils/text_normalizer.js'
+
 export type TextAnalysisResult = {
   units: number | null
   odd: number | null
@@ -9,7 +11,8 @@ export default class TextMessageAnalysisService {
    * Hoje retorna apenas unidades; pronto para expandir com mais campos.
    */
   async analyzeFromText(text: string): Promise<TextAnalysisResult> {
-    const { units, odd } = this.extractUnitsAndOdd(text)
+    const normalizedText = normalizeBetText(text) ?? ''
+    const { units, odd } = this.extractUnitsAndOdd(normalizedText)
     return {
       units,
       odd,

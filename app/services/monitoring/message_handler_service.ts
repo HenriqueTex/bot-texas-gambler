@@ -37,8 +37,6 @@ export default class MessageHandlerService {
 
     let imgResult: BetImageAnalysisResult | null = null
 
-    console.log(message)
-
     if (!message.photo && !messageText) {
       console.log('Mensagem ignorada: sem foto ou texto.')
       return
@@ -92,23 +90,38 @@ export default class MessageHandlerService {
     }
 
     console.log('Mercado resolvido:', imgResult)
-    if (imgResult) {
-      const bet = await Bet.create({
-        homeTeam: imgResult.homeTeam,
-        awayTeam: imgResult.awayTeam,
-        marketId: imgResult.marketId ?? null,
-        odd: formatOdd(imgResult.odd),
-        units: imgResult.units ?? null,
-        messageId: message.message_id?.toString() ?? null,
-        chatId: message.chat?.id?.toString() ?? 'unknown',
-      })
-
-      const sheetService = this.sheetFactory.getSheetService({
-        chatId: message.chat?.id ?? null,
-      })
-      const status = await sheetService.createLine(message, imgResult, bet)
-      console.log(`Sheet service status: ${status}`)
+    const validationErrors = this.validateBetData(imgResult, messageText)
+    if (validationErrors.length) {
+      console.log(`Mensagem ignorada: falha de validação (${validationErrors.join(', ')})`)
+      return
     }
+
+    const messageId = message.message_id?.toString() ?? null
+    const chatId = message.chat?.id?.toString() ?? 'unknown'
+
+    if (messageId) {
+      const existing = await Bet.query().where('message_id', messageId).where('chat_id', chatId).first()
+      if (existing) {
+        console.log(`Aposta duplicada ignorada: message_id=${messageId}`)
+        return
+      }
+    }
+
+    const bet = await Bet.create({
+      homeTeam: imgResult.homeTeam,
+      awayTeam: imgResult.awayTeam,
+      marketId: imgResult.marketId ?? null,
+      odd: formatOdd(imgResult.odd),
+      units: imgResult.units ?? null,
+      messageId,
+      chatId,
+    })
+
+    const sheetService = this.sheetFactory.getSheetService({
+      chatId: message.chat?.id ?? null,
+    })
+    const status = await sheetService.createLine(message, imgResult, bet)
+    console.log(`Sheet service status: ${status}`)
     console.log('Aposta registrada no banco de dados.')
   }
 
@@ -121,5 +134,19 @@ export default class MessageHandlerService {
       return false
     }
     return message.text.trim().startsWith('/')
+  }
+
+  private validateBetData(imgResult: BetImageAnalysisResult, messageText: string): string[] {
+    const errors: string[] = []
+
+    if (imgResult.odd !== null && imgResult.odd <= 1) {
+      errors.push('odd_invalida')
+    }
+
+    if (imgResult.units !== null && imgResult.units <= 0) {
+      errors.push('stake_invalida')
+    }
+
+    return errors
   }
 }

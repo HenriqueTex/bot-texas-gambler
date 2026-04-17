@@ -26,14 +26,7 @@ export default class SheetMapFactoryService {
    */
   getSheetService(args: { chatId?: ChatIdentifier }): SheetMapService {
     const key = this.normalizeIdentifier(args.chatId) ?? 'default'
-
-    switch (key) {
-      // Exemplo de roteamento específico por chat:
-      case '-4620692690':
-        return new TexasSheetService()
-      default:
-        return this.getOrCreate('default', TexasSheetService)
-    }
+    return this.getOrCreate(key, TexasSheetService)
   }
 
   private getOrCreate(key: string, Factory: new () => SheetMapService): SheetMapService {

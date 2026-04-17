@@ -1,13 +1,26 @@
 import type { BetImageAnalysisResult } from '#services/monitoring/bet_image_analysis_service'
 import Sheet from '#models/sheet'
 import Bet from '#models/bet'
-import { normalizeText } from '../../utils/text_normalizer.js'
+import SheetErrorLog from '#models/sheet_error_log'
 import { formatUnit } from '../../utils/odd_formatter.js'
 import GoogleSheetsService from '#services/monitoring/google_sheets_service'
 
 export default class TexasSheetService {
   private readonly betFirstRow = 25
   private readonly sheets = new GoogleSheetsService()
+
+  // Per-sheet write queue to prevent race conditions on currentRow
+  private static readonly rowLocks = new Map<number, Promise<unknown>>()
+
+  private withSheetLock<T>(sheetId: number, fn: () => Promise<T>): Promise<T> {
+    const prev = TexasSheetService.rowLocks.get(sheetId) ?? Promise.resolve()
+    let release!: () => void
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    TexasSheetService.rowLocks.set(sheetId, gate)
+    return prev.then(() => fn()).finally(() => release())
+  }
 
   async createLine(
     message: unknown,
@@ -18,54 +31,57 @@ export default class TexasSheetService {
     if (!chatId) return 'skipped'
 
     const sheet = await Sheet.query()
-      // .where('chatId', chatId)
+      .whereHas('chat', (q) => q.where('telegram_chat_id', chatId.toString()))
       .where('active', true)
       .first()
     if (!sheet) return 'skipped'
 
-    const row = sheet.currentRow ?? this.betFirstRow
-    const sheetName = this.escapeSheetName(sheet.sheetName || 'Sheet1')
+    return this.withSheetLock(sheet.id, async () => {
+      await sheet.refresh()
+      const row = sheet.currentRow ?? this.betFirstRow
+      const sheetName = this.escapeSheetName(sheet.sheetName || 'Sheet1')
 
-    const forwardTitle =
-      (message as any)?.forward_origin?.chat?.title ??
-      (message as any)?.forward_from_chat?.title ??
-      'TexasTips'
+      const forwardTitle =
+        (message as any)?.forward_origin?.chat?.title ??
+        (message as any)?.forward_from_chat?.title ??
+        'TexasTips'
 
-    const homeAway =
-      imgResult.homeTeam && imgResult.awayTeam
-        ? `${imgResult.homeTeam} - ${imgResult.awayTeam}`
-        : (imgResult.homeTeam ?? imgResult.awayTeam ?? '')
+      const homeAway =
+        imgResult.homeTeam && imgResult.awayTeam
+          ? `${imgResult.homeTeam} - ${imgResult.awayTeam}`
+          : (imgResult.homeTeam ?? imgResult.awayTeam ?? '')
 
-    const values = [
-      this.formatDate(new Date()),
-      bet.id,
-      forwardTitle,
-      '', // coluna C vazia
-      homeAway,
-      imgResult.market ?? '',
-      '', // coluna F vazia
-      this.formatUnitForSheet(imgResult.units ?? ''),
-      this.formatOddForSheet(imgResult.odd ?? ''),
-    ]
+      const values = [
+        this.formatDate(new Date()),
+        bet.id,
+        forwardTitle,
+        '',
+        homeAway,
+        imgResult.market ?? '',
+        '',
+        this.formatUnitForSheet(imgResult.units ?? ''),
+        this.formatOddForSheet(imgResult.odd ?? ''),
+      ]
 
-    try {
-      const range = `${sheetName}!A${row}:I${row}`
-      await this.sheets.updateRange(range, [values], {
-        spreadsheetId: sheet.spreadsheetId,
-        valueInputOption: 'USER_ENTERED',
-      })
+      try {
+        const range = `${sheetName}!A${row}:I${row}`
+        await this.sheets.updateRange(range, [values], {
+          spreadsheetId: sheet.spreadsheetId,
+          valueInputOption: 'USER_ENTERED',
+        })
 
-      sheet.currentRow = row + 1
-      await sheet.save()
-      bet.sheetRow = row
-      await bet.save()
+        sheet.currentRow = row + 1
+        await sheet.save()
+        bet.sheetRow = row
+        await bet.save()
 
-      return 'success'
-    } catch (error) {
-      console.log('Erro ao escrever na planilha Texas:', error)
-      console.error('Falha ao escrever na planilha Texas:', error)
-      return 'error'
-    }
+        return 'success'
+      } catch (error) {
+        await this.logSheetError(bet.id, error)
+        console.error('Falha ao escrever na planilha Texas:', error)
+        return 'error'
+      }
+    })
   }
 
   async updateLine(
@@ -78,7 +94,7 @@ export default class TexasSheetService {
     if (!chatId) return 'skipped'
 
     const sheet = await Sheet.query()
-      // .where('chatId', chatId)
+      .whereHas('chat', (q) => q.where('telegram_chat_id', chatId.toString()))
       .where('active', true)
       .first()
     if (!sheet) return 'skipped'
@@ -121,6 +137,7 @@ export default class TexasSheetService {
       await bet.save()
       return 'success'
     } catch (error) {
+      await this.logSheetError(bet.id, error)
       console.error('Falha ao atualizar linha na planilha Texas:', error)
       return 'error'
     }
@@ -128,11 +145,10 @@ export default class TexasSheetService {
 
   private extractChatId(message: unknown): number | null {
     if (!message || typeof message !== 'object') return null
-    const anyMsg = message as { chat?: { id?: number | string } }
-    const rawId = anyMsg.chat?.id
+    const rawId = (message as { chat?: { id?: number | string } }).chat?.id
     if (rawId === null || typeof rawId === 'undefined') return null
-    const normalized = normalizeText(rawId.toString())
-    return normalized ? Number(rawId) : null
+    const num = Number(rawId)
+    return Number.isFinite(num) ? num : null
   }
 
   private formatDate(date: Date): string {
@@ -203,5 +219,24 @@ export default class TexasSheetService {
     }
 
     return null
+  }
+
+  private async logSheetError(betId: number, error: unknown): Promise<void> {
+    const message = this.formatErrorMessage(error)
+    try {
+      await SheetErrorLog.create({ betId, errorMessage: message })
+    } catch (logError) {
+      console.error('Falha ao salvar log de erro da planilha:', logError)
+    }
+  }
+
+  private formatErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message
+    if (typeof error === 'string') return error
+    try {
+      return JSON.stringify(error)
+    } catch {
+      return String(error)
+    }
   }
 }

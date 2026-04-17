@@ -36,7 +36,7 @@ export default class MarketResolverService {
       return { market: synonym.market, synonym, normalizedMarket: normalized }
     }
 
-    const markets = await Market.query()
+    const markets = await Market.query().limit(200).orderBy('id')
     const decision = await this.classifyWithGemini(normalized, markets)
 
     const targetMarket =
@@ -51,11 +51,21 @@ export default class MarketResolverService {
       return { market: targetMarket, synonym: createdSynonym, normalizedMarket: normalized }
     }
 
-    const createdMarket = await Market.create({
-      name: rawMarket ?? normalized,
-      normalizedName: normalized,
-      category: null,
-    })
+    let createdMarket: Market
+    try {
+      createdMarket = await Market.create({
+        name: rawMarket ?? normalized,
+        normalizedName: normalized,
+        category: null,
+      })
+    } catch (error: any) {
+      // Handle race condition: another request created the same market concurrently
+      if (error?.code === '23505') {
+        createdMarket = await Market.query().where('normalizedName', normalized).firstOrFail()
+      } else {
+        throw error
+      }
+    }
 
     const createdSynonym = await MarketSynonym.firstOrCreate(
       { normalizedValue: normalized },
@@ -115,7 +125,7 @@ export default class MarketResolverService {
       'Take a deep breath and work on this problem step-by-step.',
     ].join('\n')
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`
     const body = {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.1 },
@@ -123,7 +133,7 @@ export default class MarketResolverService {
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
       body: JSON.stringify(body),
     })
 

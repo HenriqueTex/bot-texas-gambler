@@ -58,7 +58,7 @@ export default class GeminiBetImageAnalysisService {
     prompt: string,
     image?: { mimeType: string; base64Image: string }
   ): Promise<string> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`
     const parts = [{ text: prompt }] as Array<{ text?: string; inlineData?: unknown }>
 
     if (image) {
@@ -83,7 +83,7 @@ export default class GeminiBetImageAnalysisService {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
         body: JSON.stringify(body),
       })
 
@@ -106,11 +106,7 @@ export default class GeminiBetImageAnalysisService {
       }
 
       if (parsed.error?.message) {
-        const shouldRetry = this.isTransientStatus(503) && attempt < maxAttempts
-        if (shouldRetry) {
-          await this.sleep(baseDelayMs * attempt)
-          continue
-        }
+        // Application-level errors (invalid key, quota, content policy) are not transient
         throw new Error(`Gemini API retornou erro: ${parsed.error.message}`)
       }
 

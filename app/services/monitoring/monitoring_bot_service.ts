@@ -12,6 +12,8 @@ export default class MonitoringBotService {
   private readonly helpCommand = new HelpCommandService()
   private readonly statsCommand = new StatsCommandService()
   private readonly openBetsCommand = new OpenBetsCommandService()
+  private healthCheckTimer?: NodeJS.Timeout
+  private restartInProgress = false
 
   async run(token: string): Promise<TelegrafInstance> {
     const bot = new Telegraf(token)
@@ -50,7 +52,73 @@ export default class MonitoringBotService {
       await this.messageEditHandler.handle({ message })
     })
 
-    await bot.launch()
+    bot.catch((error) => {
+      console.error('Erro no middleware do bot:', error)
+    })
+
+    await this.launchWithRetry(bot)
+    this.scheduleHealthCheck(bot)
     return bot
+  }
+
+  private async launchWithRetry(bot: TelegrafInstance, maxAttempts = 10): Promise<void> {
+    const maxDelayMs = 30_000
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await bot.launch({ dropPendingUpdates: true })
+        return
+      } catch (error) {
+        if (attempt >= maxAttempts) {
+          throw new Error(
+            `Bot falhou ao iniciar após ${maxAttempts} tentativas: ${String(error)}`
+          )
+        }
+        const delay = Math.min(1000 * 2 ** Math.min(attempt, 5), maxDelayMs)
+        console.error(
+          `Falha ao iniciar bot (tentativa ${attempt}/${maxAttempts}). Retentando em ${delay}ms.`,
+          error
+        )
+        await this.sleep(delay)
+      }
+    }
+  }
+
+  private scheduleHealthCheck(bot: TelegrafInstance): void {
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer)
+    }
+
+    this.healthCheckTimer = setInterval(async () => {
+      try {
+        await bot.telegram.getMe()
+      } catch (error) {
+        console.error('Health check falhou. Reiniciando bot...', error)
+        await this.restartBot(bot, 'health_check_failed')
+      }
+    }, 30_000)
+  }
+
+  private async restartBot(bot: TelegrafInstance, reason: string): Promise<void> {
+    if (this.restartInProgress) return
+    this.restartInProgress = true
+
+    try {
+      bot.stop(reason)
+    } catch (error) {
+      console.error('Falha ao parar o bot durante o restart:', error)
+    }
+
+    try {
+      await this.launchWithRetry(bot)
+    } finally {
+      this.restartInProgress = false
+    }
+
+    this.scheduleHealthCheck(bot)
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 }

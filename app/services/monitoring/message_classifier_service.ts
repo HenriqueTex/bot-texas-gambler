@@ -79,7 +79,7 @@ export default class MessageClassifierService {
   }
 
   private hasTeamSeparator(text: string): boolean {
-    return /\bvs\b|\bx\b|\s-\s/i.test(text)
+    return /\bvs\.?\b|\s+x\s+|\s-\s/i.test(text)
   }
 
   private hasPromotionKeywords(text: string): boolean {

@@ -1,6 +1,5 @@
 import Bet from '#models/bet'
-import Market from '#models/market'
-import { normalizeText } from '../../utils/text_normalizer.js'
+import { normalizeBetText } from '../../utils/text_normalizer.js'
 import SheetMapFactoryService from '#services/monitoring/sheet_map_factory_service'
 import { formatOdd, formatUnit } from '../../utils/odd_formatter.js'
 
@@ -33,8 +32,19 @@ export default class MessageEditHandlerService {
     }
 
     const extractedText = (message.text ?? message.caption ?? '').toString()
-    const { units, odd } = this.extractUnitsAndOdd(extractedText)
+    const normalizedText = normalizeBetText(extractedText) ?? extractedText
+    const { units, odd } = this.extractUnitsAndOdd(normalizedText)
     const result = this.extractResult(extractedText)
+
+    const hasChanges =
+      (units !== null && units !== bet.units) ||
+      (odd !== null && odd !== bet.odd) ||
+      (result !== null && result !== bet.result)
+
+    if (!hasChanges) {
+      console.log(`Edição ignorada: sem alterações detectadas em bet ${bet.id}`)
+      return 'skipped'
+    }
 
     bet.units = formatUnit(units ?? bet.units)
     bet.odd = formatOdd(odd ?? bet.odd)
